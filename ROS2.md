@@ -17,7 +17,7 @@ import rclpy
 from rclpy.node import Node
 from example_interfaces.msg import String
 
-Class demo_node(Node):
+class demo_node(Node):
     def __init__(self):
         super().__init__("demo_node")
         self.item = String()
