@@ -1,4 +1,6 @@
 # ROS2
+## Learning Resources:
+[fishros-bilibili](https://www.bilibili.com/video/BV1GW42197Ck/?spm_id_from=333.1387.collection.video_card.click)
 ## workspace
 
 
@@ -63,5 +65,67 @@ def main():
     """
     rclpy.spin(node)
     rclpy.shutdown()
+
+```
+
+**cpp version**
+```cpp
+// Use turtlesimnode as a demo.
+// We will define a node to control the turtle. 
+// Firstly, we get its postion by subscribption. 
+// Secondly, we change its position by publish.
+// Location: workspace/src/demo_cpp_pkg/src/turtle_control.cpp
+#include <rclcpp/rclcpp.hpp>
+#include <geometry_msgs/msg/twist.hpp>
+#include <turtlesim/msg/pose.hpp>
+
+class TurtleControlNode : public rclcpp::Node
+{
+private:
+    rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher;
+    rclcpp::Subscription<turtlesim::msg::Pose>::SharedPtr subscription;
+
+    double target_x{1.0};
+    double target_y{1.0};
+    double k{1.0};
+    double max_speed{3.0};
+
+public:
+    TurtleControlNode() : Node("turtle_control")
+    {
+        this->publisher = this->create_publisher<geometry_msgs::msg::Twist>("/turtle1/cmd_vel", 10);
+        this->subscription = this->create_subscription<turtlesim::msg::Pose>("/turtle1/pose", 10, std::bind(&TurtleControlNode::pose_callback, this, std::placeholders::_1));
+    };
+
+    void pose_callback(const turtlesim::msg::Pose::SharedPtr msg)
+    {   
+        auto current_x = msg->x;
+        auto current_y = msg->y;
+        RCLCPP_INFO(this->get_logger(), "Current position: x=%.2f, y=%.2f", current_x, current_y);
+        
+        auto distance = std::sqrt((target_x - current_x) * (target_x - current_x) + (target_y - current_y) * (target_y - current_y));
+        auto angle = std::atan2(target_y - current_y, target_x - current_x) - msg->theta;
+        
+        auto control_msg = geometry_msgs::msg::Twist();
+        if (distance > 0.1) {
+            if (fabs(angle) > 0.2) {
+                control_msg.angular.z = fabs(angle);   
+            } else {
+                control_msg.linear.x = k * distance > max_speed ? max_speed : k * distance;
+            }
+        }
+
+        this->publisher->publish(control_msg);
+    };
+
+};
+
+int main(int argc, char *argv[])
+{
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<TurtleControlNode>();
+    rclcpp::spin(node);
+    rclcpp::shutdown();
+}
 
 ```
